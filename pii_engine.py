@@ -15,7 +15,9 @@ from config import (
 )
 
 from strategies import (
-    RegexStrategy
+    RegexStrategy,
+    NLPModelStrategy,
+    HybridStrategy,
 )
 
 logger = logging.getLogger(__name__)
@@ -49,9 +51,16 @@ PII_STRATEGY_REGISTRY = {
         UPI_REGEX,
         "[REDACTED_UPI]",
     ),
-    "AADHAR": RegexStrategy(
-        AADHAR_REGEX,
-        "[REDACTED_AADHAR]",
+    "AADHAR": HybridStrategy(
+        primary=RegexStrategy(AADHAR_REGEX),
+        fallback=NLPModelStrategy(
+            entity="AADHAR_ID",
+            confidence_threshold=0.80,
+        ),
+    ),
+    "PERSON_NAME": NLPModelStrategy(
+        entity="PERSON",
+        confidence_threshold=0.85,
     ),
 }
 
@@ -130,8 +139,20 @@ def mask_text(text: str):
     if not isinstance(text, str):
         return text
 
-    for strategy in PII_STRATEGY_REGISTRY.values():
-        text = strategy.apply(text)
+    # Pass 1 -> Regex
+    for strategy_name, strategy in PII_STRATEGY_REGISTRY.items():
+        if isinstance(strategy, RegexStrategy):
+            text = strategy.apply(text)
+
+    # Pass 2 -> Hybrid
+    for strategy_name, strategy in PII_STRATEGY_REGISTRY.items():
+        if isinstance(strategy, HybridStrategy):
+            text = strategy.apply(text)
+
+    # Pass 3 -> NLP semantic detection
+    if len(text) > 25:
+        nlp_strategy = PII_STRATEGY_REGISTRY["PERSON_NAME"]
+        text = nlp_strategy.apply(text)
 
     return text
 

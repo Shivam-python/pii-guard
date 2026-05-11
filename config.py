@@ -45,5 +45,7 @@ FIELD_MASK_RULES = {
     "aadhaar": "AADHAR",
     "ifsc": "IFSC",
     "card_number": "CARD",
-    "upi": "UPI"
+    "upi": "UPI",
+    "account_holder": "PERSON_NAME",
+    "customer_name": "PERSON_NAME",
 }
